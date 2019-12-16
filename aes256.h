@@ -1,26 +1,59 @@
 #ifndef _AES256__H_
 #define _AES256__H_
 
-#define nRnd 14
+#include <cstdint>
+#include <vector>
+#include <cstdlib>
+#include <ctime>
+#include <algorithm>
+#include <iterator>
+#include <functional>
+#include <random>
+#include <array>
+
+#define Nr 14 // number of rounds
 #define kSz 256
 #define blkSz 128
 #define stSz 16
-#define Nk 6
+#define Nk 8 // columns in cipherkey
+#define Nb 4 // columns in state
+#define RconSz 7
+#define mxPol 0x011B
 
 class AES256{
 private:
-	void keyExpansion(uint8_t& cphKey, uint32_t& expKey);
-	void addRoundKey(uint8_t& state, uint8_t& rndKey);
+	void keyExpansion(void);
+	template<class Iterator> void addRoundKey(Iterator w);
 	void subBytes(void);
 	void shiftRows(void);
 	void mixColumns(void);
 
+    uint32_t subWord(uint32_t w);
+
+    template<class Iterator> void cpyKey(Iterator first, Iterator last);
+
+    void encipher(void);
+    void decipher(void);
+
+    void fillRcon();
+
+    std::vector<uint8_t> cKey; // cipherkey (256bits)
+    std::vector<uint8_t> stBlk; // state block (carries 128bits)
+    std::vector<uint32_t> expKey; // expanded key (carries Nb*(Nr+1) words)
+    std::vector<uint32_t> Rcon; // round constants
+
 public:
-	void encrypt(uint8_t& buffer, size_t sz, uint8_t& key);
-	void decrypt(uint8_t& buffer, uint8_t& key);
+    AES256(void);
+    ~AES256(void);
+    std::vector<uint8_t> keyGen(void); // generates 256bit AES key for encryption
+    std::vector<uint8_t> encrypt(const std::vector<uint8_t>& in, std::vector<uint8_t> key);
+    // std::vector<uint8_t> encrypt(const std::array<uint8_t>& in, std::vector<uint8_t> key);
+    std::vector<uint8_t> encrypt(const uint8_t* in, size_t sz, std::vector<uint8_t> key);
+	std::vector<uint8_t> decrypt(uint8_t* buffer, std::vector<uint8_t> key);
 };
 
-#define RotL(x,n) ((x << n) | (x >> ((sizeof(x) << 3) - n))
+#define RotL(x,n) ((x << n) | (x >> ((sizeof(x) << 3) - n)))
+#define RotR(x,n) ((x >> n) | (x << ((sizeof(x) << 3) - n)))
 
 static const uint8_t SBox[256] = {
     0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
