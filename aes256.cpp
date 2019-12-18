@@ -36,9 +36,21 @@ AES256::~AES256(void){
 
 template<class Iterator> void AES256::addRoundKey(Iterator w){
 	auto itSt = stBlk.begin();
-	for(size_t j=0; j<Nb; j++, w++){
-		for(size_t i=0; i<4; i++){
-			*(itSt++) ^= *w;
+	for(size_t i=0; i<Nb; i++, w++){
+		uint32_t tmp = 0;
+		
+		size_t j=0;
+		do{
+			tmp <<= 8;
+			tmp = ((*itSt++)|tmp);
+			j++;
+		}while(j<4);
+
+		itSt--;
+
+		tmp ^= *w;
+		for(j=0; j<4; j++, tmp>>=8){
+			*itSt-- = tmp;
 		}
 	}
 	return;
@@ -115,7 +127,7 @@ void AES256::shiftRows(void){
 }
 
 void AES256::mixColumns(void){
-
+	
 }
 
 
@@ -184,7 +196,7 @@ void AES256::encipher(void){
 		subBytes();
 		shiftRows();
 		mixColumns();
-		addRoundKey(expKey.begin()+(i*Nb));
+		addRoundKey(expKey.begin()+((i+1)*Nb));
 	}
 
 	subBytes();
