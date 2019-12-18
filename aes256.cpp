@@ -9,11 +9,12 @@
 #include <random>
 #include <array>
 #include <iostream>
+#include <iomanip>
 
 void printMem(std::vector<uint8_t> s){
 	for(int i=0; i<s.size(); i++){
-		if(i%4==0) std::cout << "\n";
-		std::cout << std::hex << static_cast<int>(s[i]);
+		//if(i%4==0) std::cout << "\n";
+		std::cout <<  std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(s[i]);
 
 	}
 	std::cout<<"\n";
@@ -145,6 +146,7 @@ std::vector<uint8_t> AES256::encrypt(const std::vector<uint8_t>& in, std::vector
 	std::vector<uint8_t> stOut(in.size());
 	cpyKey(key.begin(), key.end());
 	size_t amtBlk = in.size()%stSz==0 ? in.size()/stSz : (in.size()/stSz)+1;
+
 	keyExpansion();
 
 	for(size_t i=0; i<amtBlk; i++){
@@ -157,13 +159,7 @@ std::vector<uint8_t> AES256::encrypt(const std::vector<uint8_t>& in, std::vector
 			*itSt++ = *itIn++;
 		}
 
-		printMem(stBlk);
-		
-		shiftRows();
-
 		//encipher();
-
-		printMem(stBlk);
 
 		itSt = stBlk.begin();
 		auto itOut = stOut.begin()+(i*stSz);
