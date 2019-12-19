@@ -10,6 +10,7 @@
 #include <array>
 #include <iostream>
 #include <iomanip>
+#include <cassert>
 
 void printMem(std::vector<uint8_t> s){
 	for(int i=0; i<s.size(); i++){
@@ -68,18 +69,27 @@ void AES256::fillRcon(){
 	return;
 }
 
+// for encryption mix columns fast for polynomials b of form x and x+1
 uint8_t AES256::galoisMult(uint8_t a, uint8_t b){
-	if(b==1){
-		return a;
-	}else if(b==2){
-		uint8_t c = a << 1;
-		if(a&0x80){
-			c^=0x1B;
-		}
-		return c;
+	assert(b==2 || b==3);
+	if(b==2){
+		return ((a<<1) ^ ((a&0x80) ? 0x1B : 0x00));
 	}else{
 		return galoisMult(a,2)^a;
 	}
+}
+
+// for large polynomials (b > x+1)
+uint8_t AES256::galoisMultL(uint8_t a, uint8_t b){
+	uint8_t p = 0, c, i;
+	for(i=0; i<8; i++){
+		if((b&1)==0x01)	p^=a;
+		c = a&0x80;
+		a<<=1;
+		if(c==0x80)	a^=0x1B;
+		b>>=1;
+	}
+	return p;
 }
 
 
@@ -164,6 +174,44 @@ void AES256::mixColumns(void){
 	return;
 }
 
+
+void AES256::invSubBytes(void){
+	for(size_t i=0; i<stSz; i++){
+		stBlk[i] = RSBox[16*(stBlk[i]>>4)+(stBlk[i]&0xF)];
+	}
+}
+
+void AES256::invShiftRows(void){
+	std::array<uint8_t, 4> fetch;
+	for(int i=1; i<4; i++){
+		for(int j=0; j<i; j++){
+			for(size_t k=0; k<4; k++){
+				fetch[k] = stBlk[i+4*k];
+			}
+			for(size_t k=0; k<4; k++){
+				stBlk[(((i+4*k)+4)%stSz)] = fetch[k];
+			}
+		}
+	}
+}
+
+void AES256::invMixColumns(void){
+	std::array<uint8_t, 4> fetch;
+	for(size_t i=0; i<Nb; i++){
+		size_t idx = i*4;
+		for(size_t j=0; j<4; j++){
+				fetch[j] = stBlk[idx+j];
+		}
+		
+		stBlk[idx] 	 = galoisMultL(fetch[0], 0x0E) ^ galoisMultL(fetch[1], 0x0B) ^ galoisMultL(fetch[2], 0x0D) ^ galoisMultL(fetch[3], 0x09);
+		stBlk[idx+1] = galoisMultL(fetch[0], 0x09) ^ galoisMultL(fetch[1], 0x0E) ^ galoisMultL(fetch[2], 0x0B) ^ galoisMultL(fetch[3], 0x0D);
+		stBlk[idx+2] = galoisMultL(fetch[0], 0x0D) ^ galoisMultL(fetch[1], 0x09) ^ galoisMultL(fetch[2], 0x0E) ^ galoisMultL(fetch[3], 0x0B);
+		stBlk[idx+3] = galoisMultL(fetch[0], 0x0B) ^ galoisMultL(fetch[1], 0x0D) ^ galoisMultL(fetch[2], 0x09) ^ galoisMultL(fetch[3], 0x0E);
+	}
+	return;
+}
+
+
 // tested
 template<class Iterator> void AES256::cpyKey(Iterator first, Iterator last){
 	auto itFill = cKey.begin();
@@ -214,9 +262,32 @@ std::vector<uint8_t> AES256::encrypt(const uint8_t* in, size_t sz, std::vector<u
 // std::vector<uint8_t> AES256::encrypt(const std::array<uint8_t>& in, std::vector<uint8_t> key){
 // }
 
-std::vector<uint8_t> AES256::decrypt(uint8_t* buffer, std::vector<uint8_t> key){
-	std::vector<uint8_t> v(1);
-	return v;
+std::vector<uint8_t> AES256::decrypt(const std::vector<uint8_t>& in, std::vector<uint8_t> key){
+	std::vector<uint8_t> stOut(in.size());
+	cpyKey(key.begin(), key.end());
+	size_t amtBlk = in.size()%stSz==0 ? in.size()/stSz : (in.size()/stSz)+1;
+	keyExpansion();
+
+	for(size_t i=0; i<amtBlk; i++){
+		auto itSt = stBlk.begin();
+		std::fill(itSt, stBlk.end(), 0);
+
+		auto itIn = in.begin()+(i*stSz);
+		auto itInEnd = itIn+stSz;
+		while(itIn!=in.end()&&itIn!=itInEnd){
+			*itSt++ = *itIn++;
+		}
+
+		decipher();
+
+		itSt = stBlk.begin();
+		auto itOut = stOut.begin()+(i*stSz);
+		while(itSt!=stBlk.end()){
+			*itOut++ = *itSt++;
+		}
+	}
+
+	return stOut;
 }
 
 // tested
@@ -236,7 +307,18 @@ void AES256::encipher(void){
 }
 
 void AES256::decipher(void){
+	addRoundKey(expKey.begin()+(Nr*Nb));
 
+	for(size_t i=Nr-1; i>=1; i--){
+		invShiftRows();
+		invSubBytes();
+		addRoundKey(expKey.begin()+(i*Nb));
+		invMixColumns();
+	}
+
+	invShiftRows();
+	invSubBytes();
+	addRoundKey(expKey.begin());
 }
 
 std::vector<uint8_t> AES256::keyGen(void){

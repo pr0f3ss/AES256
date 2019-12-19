@@ -24,12 +24,19 @@ class AES256{
 private:
 	void keyExpansion(void);
 	template<class Iterator> void addRoundKey(Iterator w);
+
 	void subBytes(void);
 	void shiftRows(void);
 	void mixColumns(void);
 
+	void invSubBytes(void);
+	void invShiftRows(void);
+	void invMixColumns(void);
+
+	// helper functions
     uint32_t subWord(uint32_t w);
     uint8_t galoisMult(uint8_t a, uint8_t b);
+    uint8_t galoisMultL(uint8_t a, uint8_t b);
 
     template<class Iterator> void cpyKey(Iterator first, Iterator last);
 
@@ -50,7 +57,7 @@ public:
     std::vector<uint8_t> encrypt(const std::vector<uint8_t>& in, std::vector<uint8_t> key);
     // std::vector<uint8_t> encrypt(const std::array<uint8_t>& in, std::vector<uint8_t> key);
     std::vector<uint8_t> encrypt(const uint8_t* in, size_t sz, std::vector<uint8_t> key);
-	std::vector<uint8_t> decrypt(uint8_t* buffer, std::vector<uint8_t> key);
+	std::vector<uint8_t> decrypt(const std::vector<uint8_t>& in, std::vector<uint8_t> key);
 };
 
 #define RotL(x,n) ((x << n) | (x >> ((sizeof(x) << 3) - n)))

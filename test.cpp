@@ -24,12 +24,15 @@ int main(){
 
 	printMemo(input);
 	printMemo(key);
+	
+	std::vector<uint8_t> encryptedData;
+	encryptedData = aes.encrypt(input, key);
 
-	aes.encrypt(input, key);
+	printMemo(encryptedData);
 
-
-
-
+	std::vector<uint8_t> decryptedData;
+	decryptedData = aes.decrypt(encryptedData, key);
+	printMemo(decryptedData);
 
 	return 0;
 }
