@@ -53,7 +53,6 @@ template<class Iterator> void AES256::addRoundKey(Iterator w){
 			*itSt-- = tmp;
 		}
 		itSt+=5;
-		
 	}
 	return;
 }
@@ -84,7 +83,7 @@ uint8_t AES256::galoisMult(uint8_t a, uint8_t b){
 }
 
 
-// not tested fully, only first for loop tested
+// tested
 void AES256::keyExpansion(void){
 	uint32_t tmp;
 	auto itKey = cKey.begin();
@@ -145,10 +144,24 @@ void AES256::shiftRows(void){
 			}
 		}
 	}
+	return;
 }
 
+// tested, todo: optimization
 void AES256::mixColumns(void){
-	
+	std::array<uint8_t, 4> fetch;
+	for(size_t i=0; i<Nb; i++){
+		size_t idx = i*4;
+		for(size_t j=0; j<4; j++){
+				fetch[j] = stBlk[idx+j];
+			}
+		
+		stBlk[idx] = galoisMult(fetch[0], 0x02) ^ galoisMult(fetch[1], 0x03) ^ fetch[2] ^ fetch[3];
+		stBlk[idx+1] = fetch[0] ^ galoisMult(fetch[1], 0x02) ^ galoisMult(fetch[2], 0x03) ^ fetch[3];
+		stBlk[idx+2] = fetch[0] ^ fetch[1] ^ galoisMult(fetch[2], 0x02) ^ galoisMult(fetch[3], 0x03);
+		stBlk[idx+3] = galoisMult(fetch[0], 0x03) ^ fetch[1] ^ fetch[2] ^ galoisMult(fetch[3], 0x02);
+	}
+	return;
 }
 
 // tested
@@ -166,7 +179,6 @@ std::vector<uint8_t> AES256::encrypt(const std::vector<uint8_t>& in, std::vector
 	std::vector<uint8_t> stOut(in.size());
 	cpyKey(key.begin(), key.end());
 	size_t amtBlk = in.size()%stSz==0 ? in.size()/stSz : (in.size()/stSz)+1;
-
 	keyExpansion();
 
 	for(size_t i=0; i<amtBlk; i++){
@@ -179,12 +191,7 @@ std::vector<uint8_t> AES256::encrypt(const std::vector<uint8_t>& in, std::vector
 			*itSt++ = *itIn++;
 		}
 
-		addRoundKey(expKey.begin());
-		subBytes();
-		shiftRows();
-		printMem(stBlk);
-
-		//encipher();
+		encipher();
 
 		itSt = stBlk.begin();
 		auto itOut = stOut.begin()+(i*stSz);
@@ -212,7 +219,7 @@ std::vector<uint8_t> AES256::decrypt(uint8_t* buffer, std::vector<uint8_t> key){
 	return v;
 }
 
-
+// tested
 void AES256::encipher(void){
 	addRoundKey(expKey.begin());
 
