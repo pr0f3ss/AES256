@@ -34,12 +34,11 @@ AES256::AES256(void) : cKey(kSz/8,0), stBlk(blkSz/8,0), expKey(Nb*(Nr+1)), Rcon(
 AES256::~AES256(void){
 }
 
-
+// tested
 template<class Iterator> void AES256::addRoundKey(Iterator w){
 	auto itSt = stBlk.begin();
 	for(size_t i=0; i<Nb; i++, w++){
 		uint32_t tmp = 0;
-		
 		size_t j=0;
 		do{
 			tmp <<= 8;
@@ -53,10 +52,13 @@ template<class Iterator> void AES256::addRoundKey(Iterator w){
 		for(j=0; j<4; j++, tmp>>=8){
 			*itSt-- = tmp;
 		}
+		itSt+=5;
+		
 	}
 	return;
 }
 
+// tested
 void AES256::fillRcon(){
 	uint32_t rc = 1, rcL = 1;
 	for(size_t i=0; i<RconSz; i++){
@@ -67,6 +69,22 @@ void AES256::fillRcon(){
 	return;
 }
 
+uint8_t AES256::galoisMult(uint8_t a, uint8_t b){
+	if(b==1){
+		return a;
+	}else if(b==2){
+		uint8_t c = a << 1;
+		if(a&0x80){
+			c^=0x1B;
+		}
+		return c;
+	}else{
+		return galoisMult(a,2)^a;
+	}
+}
+
+
+// not tested fully, only first for loop tested
 void AES256::keyExpansion(void){
 	uint32_t tmp;
 	auto itKey = cKey.begin();
@@ -93,7 +111,7 @@ void AES256::keyExpansion(void){
 	return;
 }
 
-
+// tested
 uint32_t AES256::subWord(uint32_t w){
 	uint32_t out = 0;
 	uint32_t map = 0xFF;
@@ -107,12 +125,14 @@ uint32_t AES256::subWord(uint32_t w){
 	return out;
 }
 
+// tested
 void AES256::subBytes(void){
 	for(size_t i=0; i<stSz; i++){
 		stBlk[i] = SBox[16*(stBlk[i]>>4)+(stBlk[i]&0xF)];
 	}
 }
 
+// tested
 void AES256::shiftRows(void){
 	std::array<uint8_t, 4> fetch;
 	for(int i=1; i<4; i++){
@@ -131,7 +151,7 @@ void AES256::mixColumns(void){
 	
 }
 
-
+// tested
 template<class Iterator> void AES256::cpyKey(Iterator first, Iterator last){
 	auto itFill = cKey.begin();
 	auto itKey = first;
@@ -159,6 +179,11 @@ std::vector<uint8_t> AES256::encrypt(const std::vector<uint8_t>& in, std::vector
 			*itSt++ = *itIn++;
 		}
 
+		addRoundKey(expKey.begin());
+		subBytes();
+		shiftRows();
+		printMem(stBlk);
+
 		//encipher();
 
 		itSt = stBlk.begin();
@@ -174,6 +199,8 @@ std::vector<uint8_t> AES256::encrypt(const std::vector<uint8_t>& in, std::vector
 
 // for c-type arrays
 std::vector<uint8_t> AES256::encrypt(const uint8_t* in, size_t sz, std::vector<uint8_t> key){
+	std::vector<uint8_t> v(1);
+	return v;
 }
 
 
@@ -181,7 +208,8 @@ std::vector<uint8_t> AES256::encrypt(const uint8_t* in, size_t sz, std::vector<u
 // }
 
 std::vector<uint8_t> AES256::decrypt(uint8_t* buffer, std::vector<uint8_t> key){
-
+	std::vector<uint8_t> v(1);
+	return v;
 }
 
 

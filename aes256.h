@@ -29,6 +29,7 @@ private:
 	void mixColumns(void);
 
     uint32_t subWord(uint32_t w);
+    uint8_t galoisMult(uint8_t a, uint8_t b);
 
     template<class Iterator> void cpyKey(Iterator first, Iterator last);
 

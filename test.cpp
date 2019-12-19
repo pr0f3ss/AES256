@@ -10,7 +10,6 @@ void printMemo(std::vector<uint8_t> s){
 }
 
 int main(){
-
 	AES256 aes;
 
 	std::vector<uint8_t> key(32);
@@ -18,12 +17,11 @@ int main(){
 		key[i] = i;
 	}
 
-	
-
 	std::vector<uint8_t> input;
 	for(int i=0; i<16; i++){
 		input.push_back(i*17);
 	}
+
 	printMemo(input);
 	printMemo(key);
 
