@@ -11,6 +11,7 @@
 #include <iostream>
 #include <iomanip>
 #include <cassert>
+#include <stdexcept>
 
 void printMem(std::vector<uint8_t> s){
 	for(int i=0; i<s.size(); i++){
@@ -226,7 +227,8 @@ template<class Iterator> void AES256::cpyKey(Iterator first, Iterator last){
 std::vector<uint8_t> AES256::encrypt(const std::vector<uint8_t>& in, std::vector<uint8_t> key){
 	std::vector<uint8_t> stOut(in.size());
 	cpyKey(key.begin(), key.end());
-	size_t amtBlk = in.size()%stSz==0 ? in.size()/stSz : (in.size()/stSz)+1;
+	bool aligned = in.size()%stSz==0;
+	size_t amtBlk = aligned ? in.size()/stSz : (in.size()/stSz)+1;
 	keyExpansion();
 
 	for(size_t i=0; i<amtBlk; i++){
@@ -241,9 +243,10 @@ std::vector<uint8_t> AES256::encrypt(const std::vector<uint8_t>& in, std::vector
 
 		encipher();
 
+		size_t ovr = in.size()%16;
 		itSt = stBlk.begin();
 		auto itOut = stOut.begin()+(i*stSz);
-		while(itSt!=stBlk.end()){
+		while(itSt!=stBlk.end()&&((i<amtBlk-1)|(aligned | (itSt-stBlk.begin())%16<ovr))){
 			*itOut++ = *itSt++;
 		}
 	}
@@ -253,33 +256,33 @@ std::vector<uint8_t> AES256::encrypt(const std::vector<uint8_t>& in, std::vector
 }
 
 // for c-type arrays
-std::vector<uint8_t> AES256::encrypt(const uint8_t* in, std::vector<uint8_t> key){
-	size_t sz = sizeof(in)/sizeof(uint8_t);
+std::vector<uint8_t> AES256::encrypt(const uint8_t* in, size_t sz, std::vector<uint8_t> key){
 	std::vector<uint8_t> stOut(sz);
 	cpyKey(key.begin(), key.end());
-	size_t amtBlk = sz%stSz==0 ? sz/stSz : (sz/stSz)+1;
+	bool aligned = sz%stSz==0;
+	size_t amtBlk = aligned ? sz/stSz : (sz/stSz)+1;
 	keyExpansion();
 
 	for(size_t i=0; i<amtBlk; i++){
 		auto itSt = stBlk.begin();
 		std::fill(itSt, stBlk.end(), 0);
 
-		auto itIn = &in+(i*stSz);
-		auto itInEnd = itIn+stSz;
-		while(itIn!=(&in+sz)&&itIn!=itInEnd){
-			*itSt++ = *itIn;
-			itIn++;
+		size_t idx = i*stSz;
+		size_t idxEnd = idx+stSz;
+		while(idx<sz&&idx<idxEnd){
+			*itSt++ = in[idx];
+			idx++;
 		}
 
 		encipher();
 
+		size_t ovr = sz%16;
 		itSt = stBlk.begin();
 		auto itOut = stOut.begin()+(i*stSz);
-		while(itSt!=stBlk.end()){
+		while(itSt!=stBlk.end()&&((i<amtBlk-1)|(aligned|(itSt-stBlk.begin())%16<ovr))){
 			*itOut++ = *itSt++;
 		}
 	}
-
 	return stOut;
 }
 
@@ -289,9 +292,11 @@ std::vector<uint8_t> AES256::encrypt(const uint8_t* in, std::vector<uint8_t> key
 */
 
 std::vector<uint8_t> AES256::decrypt(const std::vector<uint8_t>& in, std::vector<uint8_t> key){
+	if(in.size()%stSz!=0) throw std::length_error("Size of input data is not aligned to 16 bytes");
 	std::vector<uint8_t> stOut(in.size());
 	cpyKey(key.begin(), key.end());
-	size_t amtBlk = in.size()%stSz==0 ? in.size()/stSz : (in.size()/stSz)+1;
+	bool aligned = in.size()%stSz==0;
+	size_t amtBlk = aligned ? in.size()/stSz : (in.size()/stSz)+1;
 	keyExpansion();
 
 	for(size_t i=0; i<amtBlk; i++){
@@ -315,8 +320,6 @@ std::vector<uint8_t> AES256::decrypt(const std::vector<uint8_t>& in, std::vector
 
 	return stOut;
 }
-
-
 
 // tested
 void AES256::encipher(void){
