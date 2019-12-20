@@ -1,6 +1,8 @@
 #include <iostream>
 #include  <iomanip>
 #include "aes256.h"
+#include <vector>
+#include <array>
 
 void printMemo(std::vector<uint8_t> s){
 	for(int i=0; i<s.size(); i++){
@@ -17,12 +19,21 @@ int main(){
 		key[i] = i;
 	}
 
-	std::vector<uint8_t> input;
+	// std::vector<uint8_t> input;
+	// for(int i=0; i<16; i++){
+	// 	input.push_back(i*17);
+	// }
+
+	// std::array<uint8_t, 16> input;
+	// for(int i=0; i<16; i++){
+	// 	input[i] = i*17;
+	// }
+	uint8_t input[16];
 	for(int i=0; i<16; i++){
-		input.push_back(i*17);
+		input[i] = i*17;
 	}
 
-	printMemo(input);
+
 	printMemo(key);
 	
 	std::vector<uint8_t> encryptedData;
@@ -33,6 +44,7 @@ int main(){
 	std::vector<uint8_t> decryptedData;
 	decryptedData = aes.decrypt(encryptedData, key);
 	printMemo(decryptedData);
+
 
 	return 0;
 }

@@ -253,14 +253,40 @@ std::vector<uint8_t> AES256::encrypt(const std::vector<uint8_t>& in, std::vector
 }
 
 // for c-type arrays
-std::vector<uint8_t> AES256::encrypt(const uint8_t* in, size_t sz, std::vector<uint8_t> key){
-	std::vector<uint8_t> v(1);
-	return v;
+std::vector<uint8_t> AES256::encrypt(const uint8_t* in, std::vector<uint8_t> key){
+	size_t sz = sizeof(in)/sizeof(uint8_t);
+	std::vector<uint8_t> stOut(sz);
+	cpyKey(key.begin(), key.end());
+	size_t amtBlk = sz%stSz==0 ? sz/stSz : (sz/stSz)+1;
+	keyExpansion();
+
+	for(size_t i=0; i<amtBlk; i++){
+		auto itSt = stBlk.begin();
+		std::fill(itSt, stBlk.end(), 0);
+
+		auto itIn = &in+(i*stSz);
+		auto itInEnd = itIn+stSz;
+		while(itIn!=(&in+sz)&&itIn!=itInEnd){
+			*itSt++ = *itIn;
+			itIn++;
+		}
+
+		encipher();
+
+		itSt = stBlk.begin();
+		auto itOut = stOut.begin()+(i*stSz);
+		while(itSt!=stBlk.end()){
+			*itOut++ = *itSt++;
+		}
+	}
+
+	return stOut;
 }
 
 
-// std::vector<uint8_t> AES256::encrypt(const std::array<uint8_t>& in, std::vector<uint8_t> key){
-// }
+/* 
+	DECRYPTION
+*/
 
 std::vector<uint8_t> AES256::decrypt(const std::vector<uint8_t>& in, std::vector<uint8_t> key){
 	std::vector<uint8_t> stOut(in.size());
@@ -289,6 +315,8 @@ std::vector<uint8_t> AES256::decrypt(const std::vector<uint8_t>& in, std::vector
 
 	return stOut;
 }
+
+
 
 // tested
 void AES256::encipher(void){

@@ -55,8 +55,8 @@ public:
     ~AES256(void);
     std::vector<uint8_t> keyGen(void); // generates 256bit AES key for encryption
     std::vector<uint8_t> encrypt(const std::vector<uint8_t>& in, std::vector<uint8_t> key);
-    // std::vector<uint8_t> encrypt(const std::array<uint8_t>& in, std::vector<uint8_t> key);
-    std::vector<uint8_t> encrypt(const uint8_t* in, size_t sz, std::vector<uint8_t> key);
+    template<size_t N> std::vector<uint8_t> encrypt(const std::array<uint8_t, N>& in, std::vector<uint8_t> key);
+    std::vector<uint8_t> encrypt(const uint8_t* in, std::vector<uint8_t> key);
 	std::vector<uint8_t> decrypt(const std::vector<uint8_t>& in, std::vector<uint8_t> key);
 };
 
@@ -108,5 +108,33 @@ static const uint8_t matMult[16] = {
 	0x01, 0x01, 0x02, 0x03,
 	0x03, 0x01, 0x01, 0x02
 };
+
+// template functions
+template<size_t N> std::vector<uint8_t> AES256::encrypt(const std::array<uint8_t, N>& in, std::vector<uint8_t> key){
+	std::vector<uint8_t> stOut(in.size());
+	cpyKey(key.begin(), key.end());
+	size_t amtBlk = in.size()%stSz==0 ? in.size()/stSz : (in.size()/stSz)+1;
+	keyExpansion();
+
+	for(size_t i=0; i<amtBlk; i++){
+		auto itSt = stBlk.begin();
+		std::fill(itSt, stBlk.end(), 0);
+
+		auto itIn = in.begin()+(i*stSz);
+		auto itInEnd = itIn+stSz;
+		while(itIn!=in.end()&&itIn!=itInEnd){
+			*itSt++ = *itIn++;
+		}
+
+		encipher();
+
+		itSt = stBlk.begin();
+		auto itOut = stOut.begin()+(i*stSz);
+		while(itSt!=stBlk.end()){
+			*itOut++ = *itSt++;
+		}
+	}
+	return stOut;
+}
 
 #endif
