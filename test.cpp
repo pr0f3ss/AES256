@@ -20,9 +20,9 @@ int main(){
 		key[i] = i;
 	}
 
-	// std::vector<uint8_t> input(48);
+	// std::vector<uint8_t> input(32);
 
-	// std::array<uint8_t, 48> input;
+	// std::array<uint8_t, 40> input;
 
 	uint8_t* input = new uint8_t[40];
 
@@ -48,6 +48,7 @@ int main(){
 	std::cout << "\n";
 
 	printMemo(key);
+	// printMemo(input);
 	
 	std::vector<uint8_t> encryptedData;
 	encryptedData = aes.encrypt(input, 40, key);
@@ -55,7 +56,7 @@ int main(){
 	printMemo(encryptedData);
 
 	std::vector<uint8_t> decryptedData;
-	decryptedData = aes.decrypt(encryptedData, key);
+	decryptedData = aes.decrypt(encryptedData, 40, key);
 	printMemo(decryptedData);
 
 	delete[] input;

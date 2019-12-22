@@ -225,15 +225,19 @@ template<class Iterator> void AES256::cpyKey(Iterator first, Iterator last){
 
 // for std::vector
 std::vector<uint8_t> AES256::encrypt(const std::vector<uint8_t>& in, std::vector<uint8_t> key){
-	std::vector<uint8_t> stOut(in.size());
+	size_t sz = in.size();
+	size_t pad = stSz - (sz%stSz);
+	size_t actSz = sz+pad;
+	size_t amtBlk = (actSz)/stSz;
+	std::vector<uint8_t> stOut(actSz);
+
 	cpyKey(key.begin(), key.end());
-	bool aligned = in.size()%stSz==0;
-	size_t amtBlk = aligned ? in.size()/stSz : (in.size()/stSz)+1;
+	
 	keyExpansion();
 
 	for(size_t i=0; i<amtBlk; i++){
 		auto itSt = stBlk.begin();
-		std::fill(itSt, stBlk.end(), 0);
+		std::fill(itSt, stBlk.end(), static_cast<uint8_t>(pad));
 
 		auto itIn = in.begin()+(i*stSz);
 		auto itInEnd = itIn+stSz;
@@ -243,10 +247,9 @@ std::vector<uint8_t> AES256::encrypt(const std::vector<uint8_t>& in, std::vector
 
 		encipher();
 
-		size_t ovr = in.size()%16;
 		itSt = stBlk.begin();
 		auto itOut = stOut.begin()+(i*stSz);
-		while(itSt!=stBlk.end()&&((i<amtBlk-1)|(aligned | (itSt-stBlk.begin())%16<ovr))){
+		while(itSt!=stBlk.end()){
 			*itOut++ = *itSt++;
 		}
 	}
@@ -257,15 +260,18 @@ std::vector<uint8_t> AES256::encrypt(const std::vector<uint8_t>& in, std::vector
 
 // for c-type arrays
 std::vector<uint8_t> AES256::encrypt(const uint8_t* in, size_t sz, std::vector<uint8_t> key){
-	std::vector<uint8_t> stOut(sz);
+	size_t pad = stSz - (sz%stSz);
+	size_t actSz = sz+pad;
+	size_t amtBlk = (actSz)/stSz;
+	std::vector<uint8_t> stOut(actSz);
+
 	cpyKey(key.begin(), key.end());
-	bool aligned = sz%stSz==0;
-	size_t amtBlk = aligned ? sz/stSz : (sz/stSz)+1;
+	
 	keyExpansion();
 
 	for(size_t i=0; i<amtBlk; i++){
 		auto itSt = stBlk.begin();
-		std::fill(itSt, stBlk.end(), 0);
+		std::fill(itSt, stBlk.end(), static_cast<uint8_t>(pad));
 
 		size_t idx = i*stSz;
 		size_t idxEnd = idx+stSz;
@@ -276,10 +282,9 @@ std::vector<uint8_t> AES256::encrypt(const uint8_t* in, size_t sz, std::vector<u
 
 		encipher();
 
-		size_t ovr = sz%16;
 		itSt = stBlk.begin();
 		auto itOut = stOut.begin()+(i*stSz);
-		while(itSt!=stBlk.end()&&((i<amtBlk-1)|(aligned|(itSt-stBlk.begin())%16<ovr))){
+		while(itSt!=stBlk.end()){
 			*itOut++ = *itSt++;
 		}
 	}
@@ -318,6 +323,13 @@ std::vector<uint8_t> AES256::decrypt(const std::vector<uint8_t>& in, std::vector
 		}
 	}
 
+	return stOut;
+}
+
+std::vector<uint8_t> AES256::decrypt(const std::vector<uint8_t>& in, size_t initSz, std::vector<uint8_t> key){
+	std::vector<uint8_t> decData(decrypt(in, key));
+	std::vector<uint8_t> stOut(initSz);
+	std::copy(decData.begin(), decData.begin()+initSz, stOut.begin());
 	return stOut;
 }
 

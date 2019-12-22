@@ -58,6 +58,7 @@ public:
     template<size_t N> std::vector<uint8_t> encrypt(const std::array<uint8_t, N>& in, std::vector<uint8_t> key);
     std::vector<uint8_t> encrypt(const uint8_t* in, size_t sz, std::vector<uint8_t> key);
 	std::vector<uint8_t> decrypt(const std::vector<uint8_t>& in, std::vector<uint8_t> key);
+    std::vector<uint8_t> decrypt(const std::vector<uint8_t>& in, size_t initSz, std::vector<uint8_t> key);
 };
 
 #define RotL(x,n) ((x << n) | (x >> ((sizeof(x) << 3) - n)))
@@ -111,32 +112,36 @@ static const uint8_t matMult[16] = {
 
 // template functions
 template<size_t N> std::vector<uint8_t> AES256::encrypt(const std::array<uint8_t, N>& in, std::vector<uint8_t> key){
-	std::vector<uint8_t> stOut(in.size());
-	cpyKey(key.begin(), key.end());
-    bool aligned = in.size()%stSz==0;
-	size_t amtBlk = aligned ? in.size()/stSz : (in.size()/stSz)+1;
-	keyExpansion();
+	size_t sz = in.size();
+    size_t pad = stSz - (sz%stSz);
+    size_t actSz = sz+pad;
+    size_t amtBlk = (actSz)/stSz;
+    std::vector<uint8_t> stOut(actSz);
 
-	for(size_t i=0; i<amtBlk; i++){
-		auto itSt = stBlk.begin();
-		std::fill(itSt, stBlk.end(), 0);
+    cpyKey(key.begin(), key.end());
+    
+    keyExpansion();
 
-		auto itIn = in.begin()+(i*stSz);
-		auto itInEnd = itIn+stSz;
-		while(itIn!=in.end()&&itIn!=itInEnd){
-			*itSt++ = *itIn++;
-		}
+    for(size_t i=0; i<amtBlk; i++){
+        auto itSt = stBlk.begin();
+        std::fill(itSt, stBlk.end(), static_cast<uint8_t>(pad));
 
-		encipher();
+        auto itIn = in.begin()+(i*stSz);
+        auto itInEnd = itIn+stSz;
+        while(itIn!=in.end()&&itIn!=itInEnd){
+            *itSt++ = *itIn++;
+        }
 
-		size_t ovr = in.size()%16;
+        encipher();
+
         itSt = stBlk.begin();
         auto itOut = stOut.begin()+(i*stSz);
-        while(itSt!=stBlk.end()&&((i<amtBlk-1)|(aligned|(itSt-stBlk.begin())%16<ovr))){
+        while(itSt!=stBlk.end()){
             *itOut++ = *itSt++;
         }
-	}
-	return stOut;
+    }
+
+    return stOut;
 }
 
 #endif
